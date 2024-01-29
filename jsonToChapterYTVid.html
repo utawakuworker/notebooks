@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YouTube Video Player with Songs</title>
+  <style>
+    /* Style for songs */
+    .song {
+      display: inline-block;
+      margin-right: 10px;
+      cursor: pointer;
+      color: blue;
+    }
+
+    /* Style for possible a capella */
+    .possible-acapella {
+      display: inline-block;
+      margin-right: 10px;
+      cursor: pointer;
+      color: green;
+    }
+  </style>
+</head>
+<body>
+  <!-- Video ID input field -->
+  <label for="video-id">Enter Video ID:</label>
+  <input type="text" id="video-id">
+
+  <!-- JSON input field for songs -->
+  <label for="json-data-songs">Enter JSON Data for Songs:</label>
+  <textarea id="json-data-songs" rows="5" cols="50"></textarea>
+
+  <!-- JSON input field for possible a capella -->
+  <label for="json-data-acapella">Enter JSON Data for Possible A Capella:</label>
+  <textarea id="json-data-acapella" rows="5" cols="50"></textarea>
+
+  <!-- Button to apply changes -->
+  <button onclick="applyChanges()">Apply Changes</button>
+
+  <!-- YouTube video player -->
+  <div id="player"></div>
+
+  <!-- Songs container -->
+  <div id="songs-container">
+    <!-- Songs will be dynamically added here -->
+  </div>
+
+  <!-- Possible A Capella container -->
+  <div id="acapella-container">
+    <!-- Possible A Capella will be dynamically added here -->
+  </div>
+
+  <script>
+    // Function to apply changes when the button is clicked
+    function applyChanges() {
+      const videoId = document.getElementById('video-id').value;
+      const jsonDataSongs = document.getElementById('json-data-songs').value;
+      const jsonDataAcapella = document.getElementById('json-data-acapella').value;
+
+      // Parse JSON data
+      const songsData = JSON.parse(jsonDataSongs);
+      const acapellaData = JSON.parse(jsonDataAcapella);
+
+      // Load the YouTube video
+      loadVideo(videoId, songsData, acapellaData);
+    }
+
+    // Function to load the YouTube video
+    function loadVideo(videoId, songsData, acapellaData) {
+      // Load YouTube Player API asynchronously
+      const tag = document.createElement('script');
+      tag.src = 'https://www.youtube.com/iframe_api';
+      const firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+      // Global variable to hold the YouTube player
+      let player;
+
+      // Callback function called by the YouTube API when it's ready
+      window.onYouTubeIframeAPIReady = function() {
+        player = new YT.Player('player', {
+          height: '360',
+          width: '640',
+          videoId: videoId,
+          events: {
+            'onReady': onPlayerReady
+          }
+        });
+      };
+
+      // Function to create song indicators
+      function createSongs() {
+        const songsContainer = document.getElementById('songs-container');
+        songsContainer.innerHTML = ''; // Clear previous songs
+
+        Object.keys(songsData.start).forEach((key, index) => {
+          const startTime = timeToSeconds(songsData.start[key]);
+          const endTime = timeToSeconds(songsData.end[key]);
+          const songElement = document.createElement('span');
+          songElement.classList.add('song');
+          songElement.textContent = `Song ${index + 1}`;
+
+          // Jump to the song when clicked
+          songElement.addEventListener('click', () => {
+            player.seekTo(startTime, true);
+          });
+
+          songsContainer.appendChild(songElement);
+        });
+      }
+
+      // Function to create possible a capella indicators
+      function createAcapella() {
+        const acapellaContainer = document.getElementById('acapella-container');
+        acapellaContainer.innerHTML = ''; // Clear previous possible a capella
+
+        Object.keys(acapellaData.start).forEach((key, index) => {
+          const startTime = timeToSeconds(acapellaData.start[key]);
+          const endTime = timeToSeconds(acapellaData.end[key]);
+          const acapellaElement = document.createElement('span');
+          acapellaElement.classList.add('possible-acapella');
+          acapellaElement.textContent = `Possible A Capella ${index + 1}`;
+
+          // Jump to the possible a capella when clicked
+          acapellaElement.addEventListener('click', () => {
+            player.seekTo(startTime, true);
+          });
+
+          acapellaContainer.appendChild(acapellaElement);
+        });
+      }
+
+      // Function to convert time in format HH:MM:SS to seconds
+      function timeToSeconds(timeString) {
+        const parts = timeString.split(':');
+        return parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
+      }
+
+      // Function called when the player is ready
+      function onPlayerReady(event) {
+        createSongs();
+        createAcapella();
+      }
+    }
+  </script>
+</body>
+</html>
