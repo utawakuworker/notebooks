@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -26,14 +25,21 @@
   <!-- Video ID input field -->
   <label for="video-id">Enter Video ID:</label>
   <input type="text" id="video-id">
+  
+  <!-- Container for JSON input fields -->
+  <div>
+    <!-- JSON input field for songs -->
+    <div>
+      <label for="json-data-songs">Enter JSON Data for Songs:</label>
+      <textarea id="json-data-songs" rows="5" cols="50"></textarea>
+    </div>
 
-  <!-- JSON input field for songs -->
-  <label for="json-data-songs">Enter JSON Data for Songs:</label>
-  <textarea id="json-data-songs" rows="5" cols="50"></textarea>
-
-  <!-- JSON input field for possible a capella -->
-  <label for="json-data-acapella">Enter JSON Data for Possible A Capella:</label>
-  <textarea id="json-data-acapella" rows="5" cols="50"></textarea>
+    <!-- JSON input field for possible a capella -->
+    <div>
+      <label for="json-data-acapella">Enter JSON Data for Possible A Capella:</label>
+      <textarea id="json-data-acapella" rows="5" cols="50"></textarea>
+    </div>
+  </div>
 
   <!-- Button to apply changes -->
   <button onclick="applyChanges()">Apply Changes</button>
@@ -51,33 +57,43 @@
     <!-- Possible A Capella will be dynamically added here -->
   </div>
 
+  <!-- Button to finalize selected chapters -->
+  <button onclick="finalizeChapters()">Confirm Chapters</button>
+
+  <!-- YouTube comment form -->
+  <div id="comment-form">
+    <h2>YouTube Comment Form</h2>
+    <textarea id="comment-text" rows="5" cols="50"></textarea>
+  </div>
+
   <script>
-    // Function to apply changes when the button is clicked
+    let confirmedChapters = {
+      songs: {},
+      acapella: {}
+    };
+
+    let songTimestamps = [];
+    let acapellaTimestamps = [];
+
     function applyChanges() {
       const videoId = document.getElementById('video-id').value;
       const jsonDataSongs = document.getElementById('json-data-songs').value;
       const jsonDataAcapella = document.getElementById('json-data-acapella').value;
 
-      // Parse JSON data
       const songsData = JSON.parse(jsonDataSongs);
       const acapellaData = JSON.parse(jsonDataAcapella);
 
-      // Load the YouTube video
       loadVideo(videoId, songsData, acapellaData);
     }
 
-    // Function to load the YouTube video
     function loadVideo(videoId, songsData, acapellaData) {
-      // Load YouTube Player API asynchronously
       const tag = document.createElement('script');
       tag.src = 'https://www.youtube.com/iframe_api';
       const firstScriptTag = document.getElementsByTagName('script')[0];
       firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
-      // Global variable to hold the YouTube player
       let player;
 
-      // Callback function called by the YouTube API when it's ready
       window.onYouTubeIframeAPIReady = function() {
         player = new YT.Player('player', {
           height: '360',
@@ -89,60 +105,127 @@
         });
       };
 
-      // Function to create song indicators
-      function createSongs() {
+    function createSongs() {
         const songsContainer = document.getElementById('songs-container');
-        songsContainer.innerHTML = ''; // Clear previous songs
+        songsContainer.innerHTML = '';
 
         Object.keys(songsData.start).forEach((key, index) => {
-          const startTime = timeToSeconds(songsData.start[key]);
-          const endTime = timeToSeconds(songsData.end[key]);
-          const songElement = document.createElement('span');
-          songElement.classList.add('song');
-          songElement.textContent = `Song ${index + 1}`;
+            const startTime = timeToSeconds(songsData.start[key]);
+            const endTime = timeToSeconds(songsData.end[key]);
+            const songElement = document.createElement('div');
+            songElement.classList.add('chapter-container');
 
-          // Jump to the song when clicked
-          songElement.addEventListener('click', () => {
-            player.seekTo(startTime, true);
-          });
+            const songCheckbox = document.createElement('input');
+            songCheckbox.type = 'checkbox';
+            songCheckbox.dataset.start = startTime; // Store start time
+            songCheckbox.dataset.end = endTime; // Store end time
+            songCheckbox.addEventListener('change', () => {
+                handleChapterConfirmation('songs', index, songCheckbox.checked);
+            });
 
-          songsContainer.appendChild(songElement);
+            const songLabel = document.createElement('label');
+            songLabel.textContent = `Song ${index + 1}`;
+
+            const playButton = document.createElement('button');
+            playButton.textContent = 'Play';
+            playButton.addEventListener('click', () => {
+                handleChapterClick(startTime);
+            });
+
+            songElement.appendChild(songCheckbox);
+            songElement.appendChild(songLabel);
+            songElement.appendChild(playButton);
+
+            songsContainer.appendChild(songElement);
+
+            // Store start and end times in songTimestamps array
+            songTimestamps.push({ start: songsData.start[key], end: songsData.end[key] });
         });
-      }
+    }
 
-      // Function to create possible a capella indicators
-      function createAcapella() {
+    function createAcapella() {
         const acapellaContainer = document.getElementById('acapella-container');
-        acapellaContainer.innerHTML = ''; // Clear previous possible a capella
+        acapellaContainer.innerHTML = '';
 
         Object.keys(acapellaData.start).forEach((key, index) => {
-          const startTime = timeToSeconds(acapellaData.start[key]);
-          const endTime = timeToSeconds(acapellaData.end[key]);
-          const acapellaElement = document.createElement('span');
-          acapellaElement.classList.add('possible-acapella');
-          acapellaElement.textContent = `Possible A Capella ${index + 1}`;
+            const startTime = timeToSeconds(acapellaData.start[key]);
+            const endTime = timeToSeconds(acapellaData.end[key]);
+            const acapellaElement = document.createElement('div');
+            acapellaElement.classList.add('chapter-container');
 
-          // Jump to the possible a capella when clicked
-          acapellaElement.addEventListener('click', () => {
-            player.seekTo(startTime, true);
-          });
+            const acapellaCheckbox = document.createElement('input');
+            acapellaCheckbox.type = 'checkbox';
+            acapellaCheckbox.dataset.start = startTime; // Store start time
+            acapellaCheckbox.dataset.end = endTime; // Store end time
+            acapellaCheckbox.addEventListener('change', () => {
+                handleChapterConfirmation('acapella', index, acapellaCheckbox.checked);
+            });
 
-          acapellaContainer.appendChild(acapellaElement);
+            const acapellaLabel = document.createElement('label');
+            acapellaLabel.textContent = `Possible A Capella ${index + 1}`;
+
+            const playButton = document.createElement('button');
+            playButton.textContent = 'Play';
+            playButton.addEventListener('click', () => {
+                handleChapterClick(startTime);
+            });
+
+            acapellaElement.appendChild(acapellaCheckbox);
+            acapellaElement.appendChild(acapellaLabel);
+            acapellaElement.appendChild(playButton);
+
+            acapellaContainer.appendChild(acapellaElement);
+
+            // Store start and end times in acapellaTimestamps array
+            acapellaTimestamps.push({ start: acapellaData.start[key], end: acapellaData.end[key] });
         });
+    }
+
+
+      function handleChapterClick(startTime) {
+          player.seekTo(startTime, true);
+          player.playVideo();
       }
 
-      // Function to convert time in format HH:MM:SS to seconds
       function timeToSeconds(timeString) {
         const parts = timeString.split(':');
         return parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
       }
 
-      // Function called when the player is ready
       function onPlayerReady(event) {
         createSongs();
         createAcapella();
       }
     }
+
+    function handleChapterConfirmation(chapterType, index, confirm) {
+      if (confirm) {
+        confirmedChapters[chapterType][index] = true;
+      } else {
+        confirmedChapters[chapterType][index] = false;
+      }
+    }
+
+    function finalizeChapters() {
+      let comment = "Confirmed chapters:\n";
+
+      comment += "Songs:\n";
+      Object.keys(confirmedChapters.songs).forEach((key, index) => {
+        if (confirmedChapters.songs[key]) {
+          comment += `Song ${index + 1} - Start: ${songTimestamps[key].start}, End: ${songTimestamps[key].end}\n`;
+        }
+      });
+
+      comment += "Possible A Capella:\n";
+      Object.keys(confirmedChapters.acapella).forEach((key, index) => {
+        if (confirmedChapters.acapella[key]) {
+          comment += `Possible A Capella ${index + 1} - Start: ${acapellaTimestamps[key].start}, End: ${acapellaTimestamps[key].end}\n`;
+        }
+      });
+
+      document.getElementById('comment-text').value = comment;
+    }
+
   </script>
 </body>
 </html>
